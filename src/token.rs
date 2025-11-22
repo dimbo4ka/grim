@@ -1,41 +1,70 @@
 #[derive(Debug, Clone, Copy)]
-struct Range {
+pub struct Range {
     pub start: usize,
     pub end: usize,
 }
 
-#[derive(Debug, Clone)]
-pub struct Token {
-    pub TokenType: token_type,
-    pub Range: range,
+impl Range {
+    pub fn new(start: usize, end: usize) -> Self {
+        Range {
+            start: start,
+            end: end,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
+pub struct Token {
+    pub token_type: TokenType,
+    pub range: Range,
+}
+
+impl Token {
+    pub fn new(token_type: TokenType, range: Range) -> Self {
+        Token {
+            token_type: token_type,
+            range: range,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
     Identifier(String),
     IntLiteral(i128),
     BoolLiteral(bool),
-    Var,
-    LBrace, RBrace,
-    LParen, RParen,
+    LBrace,
+    RBrace,
+    LParen,
+    RParen,
     Semicolon,
     Comma,
     Comment,
 
-    Assign,
-    Plus, Minus,
-    Star, Slash,
+    Eq,
+    Plus,
+    PlusEq,
+    Minus,
+    MinusEq,
+    Star,
+    StarEq,
+    Slash,
+    SlashEq,
 
-    Eq, LogicalEq,
-    Bang, BangEq,
-    Lt, Gt, Le, Ge,
-    
-    KwIf, KwElse,
-    KwFor, KwWhile,
-    KwFn, KwVar, 
+    EqEq,
+    Bang,
+    BangEq,
+    Lt,
+    Gt,
+    Le,
+    Ge,
 
-    Eof
+    KwIf,
+    KwElse,
+    KwFor,
+    KwWhile,
+    KwFn,
+    KwVar,
+
+    Eof,
 }
-
-
-
