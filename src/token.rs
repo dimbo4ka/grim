@@ -1,41 +1,101 @@
 #[derive(Debug, Clone, Copy)]
-struct Range {
+pub struct Range {
     pub start: usize,
     pub end: usize,
 }
 
-#[derive(Debug, Clone)]
-pub struct Token {
-    pub TokenType: token_type,
-    pub Range: range,
+impl Range {
+    pub fn new(start: usize, end: usize) -> Self {
+        Range {
+            start: start,
+            end: end,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
+pub struct Token {
+    pub token_type: TokenType,
+    pub range: Range,
+}
+
+impl Token {
+    pub fn new(token_type: TokenType, range: Range) -> Self {
+        Token {
+            token_type: token_type,
+            range: range,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
     Identifier(String),
     IntLiteral(i128),
     BoolLiteral(bool),
-    Var,
-    LBrace, RBrace,
-    LParen, RParen,
+    LBrace,
+    RBrace,
+    LParen,
+    RParen,
+    LBracket,
+    RBracket,
+    Arrow,
+    ColonEq,
+    Colon,
     Semicolon,
     Comma,
-    Comment,
+    Dot,
+    DotDot,
+    Question,
 
-    Assign,
-    Plus, Minus,
-    Star, Slash,
+    Eq,
+    Plus,
+    PlusPlus,
+    PlusEq,
+    Minus,
+    MinusMinus,
+    MinusEq,
+    Star,
+    StarEq,
+    Slash,
+    SlashEq,
+    Percent,
+    PercentEq,
 
-    Eq, LogicalEq,
-    Bang, BangEq,
-    Lt, Gt, Le, Ge,
-    
-    KwIf, KwElse,
-    KwFor, KwWhile,
-    KwFn, KwVar, 
+    Amp,
+    Pipe,
+    Caret,
+    Tilde,
+    LtLt,
+    GtGt,
 
-    Eof
+    AmpAmp,
+    PipePipe,
+    EqEq,
+    Bang,
+    BangEq,
+    Lt,
+    Gt,
+    Le,
+    Ge,
+
+    KwVar,
+    KwConst,
+    KwIf,
+    KwElse,
+    KwLoop,
+    KwFor,
+    KwForEach,
+    KwWhile,
+    KwContinue,
+    KwBreak,
+    KwFn,
+    KwReturn,
+    KwIn,
+
+    KwBool,
+    KwInt,
+    KwString,
+
+    Eof,
 }
-
-
-
