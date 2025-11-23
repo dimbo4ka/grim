@@ -5,16 +5,36 @@ pub struct Lexer {
     cur_pos: usize,
 }
 
+macro_rules! try_eat_word {
+    ($self:expr, $(($word:expr, $token:expr)),+ $(,)?) => {
+        $(
+            if let Some(range) = $self.eat_word($word) {
+                return Some(Token::new($token, range));
+            }
+        )+
+    };
+}
+
+macro_rules! try_eat_full {
+    ($self:expr, $(($word:expr, $token:expr)),+ $(,)?) => {
+        $(
+            if let Some(range) = $self.eat_full($word) {
+                return Some(Token::new($token, range));
+            }
+        )+
+    };
+}
+
 impl Lexer {
     pub fn new(lines: String) -> Self {
-        Lexer {
+        Self {
             lines: lines,
             cur_pos: 0,
         }
     }
 
     pub fn next_token(&mut self) -> Token {
-        self.skip_whitespaces();
+        self.skip_comments_and_whitespaces();
         if let Some(eof) = self.parse_eof() {
             return eof;
         }
@@ -41,10 +61,34 @@ impl Lexer {
     }
 
     fn skip_whitespaces(&mut self) {
-        while self.cur_pos < self.lines.len()
-            && self.lines.as_bytes()[self.cur_pos].is_ascii_whitespace()
-        {
+        let bytes = self.lines.as_bytes();
+        while self.cur_pos < bytes.len() {
+            if !bytes[self.cur_pos].is_ascii_whitespace() {
+                break;
+            }
             self.cur_pos += 1;
+        }
+    }
+
+    fn skip_comments_and_whitespaces(&mut self) {
+        self.skip_whitespaces();
+        if self.eat_word("//").is_some() {
+            while self.cur_pos < self.lines.as_bytes().len() {
+                if self.eat_word("\n").is_some() {
+                    self.skip_comments_and_whitespaces();
+                    return;
+                }
+                self.cur_pos += 1;
+            }
+        }
+        if self.eat_word("/*").is_some() {
+            while self.cur_pos < self.lines.as_bytes().len() {
+                if self.eat_word("*/").is_some() {
+                    self.skip_comments_and_whitespaces();
+                    return;
+                }
+                self.cur_pos += 1;
+            }
         }
     }
 
@@ -72,82 +116,64 @@ impl Lexer {
         if !self.start_with_alphabetic() {
             return None;
         }
-        if let Some(range) = self.eat_full("var") {
-            return Some(Token::new(TokenType::KwVar, range));
-        }
-        if let Some(range) = self.eat_full("true") {
-            return Some(Token::new(TokenType::BoolLiteral(true), range));
-        }
-        if let Some(range) = self.eat_full("false") {
-            return Some(Token::new(TokenType::BoolLiteral(false), range));
-        }
-        if let Some(range) = self.eat_full("if") {
-            return Some(Token::new(TokenType::KwIf, range));
-        }
-        if let Some(range) = self.eat_full("else") {
-            return Some(Token::new(TokenType::KwElse, range));
-        }
-        if let Some(range) = self.eat_full("for") {
-            return Some(Token::new(TokenType::KwFor, range));
-        }
-        if let Some(range) = self.eat_full("while") {
-            return Some(Token::new(TokenType::KwWhile, range));
-        }
-        if let Some(range) = self.eat_full("fn") {
-            return Some(Token::new(TokenType::KwFn, range));
-        }
-        Some(self.eat_alphanumeric())
+        try_eat_full!(
+            self,
+            ("var", TokenType::KwVar),
+            ("const", TokenType::KwConst),
+            ("true", TokenType::BoolLiteral(true)),
+            ("false", TokenType::BoolLiteral(false)),
+            ("if", TokenType::KwIf),
+            ("else", TokenType::KwElse),
+            ("loop", TokenType::KwLoop),
+            ("foreach", TokenType::KwForEach),
+            ("for", TokenType::KwFor),
+            ("while", TokenType::KwWhile),
+            ("continue", TokenType::KwContinue),
+            ("break", TokenType::KwBreak),
+            ("fn", TokenType::KwFn),
+            ("return", TokenType::KwReturn),
+            ("int", TokenType::KwInt),
+            ("bool", TokenType::KwBool),
+            ("str", TokenType::KwString),
+            ("in", TokenType::KwIn),
+        );
+        Some(self.parse_identifier())
     }
 
     fn parse_operation(&mut self) -> Option<Token> {
-        if let Some(range) = self.eat_word("==") {
-            return Some(Token::new(TokenType::EqEq, range));
-        }
-        if let Some(range) = self.eat_word("=") {
-            return Some(Token::new(TokenType::Eq, range));
-        }
-        if let Some(range) = self.eat_word("!=") {
-            return Some(Token::new(TokenType::BangEq, range));
-        }
-        if let Some(range) = self.eat_word("!=") {
-            return Some(Token::new(TokenType::Bang, range));
-        }
-        if let Some(range) = self.eat_word(">=") {
-            return Some(Token::new(TokenType::Ge, range));
-        }
-        if let Some(range) = self.eat_word(">") {
-            return Some(Token::new(TokenType::Gt, range));
-        }
-        if let Some(range) = self.eat_word("<=") {
-            return Some(Token::new(TokenType::Le, range));
-        }
-        if let Some(range) = self.eat_word("<") {
-            return Some(Token::new(TokenType::Lt, range));
-        }
-        if let Some(range) = self.eat_word("+=") {
-            return Some(Token::new(TokenType::PlusEq, range));
-        }
-        if let Some(range) = self.eat_word("+") {
-            return Some(Token::new(TokenType::Plus, range));
-        }
-        if let Some(range) = self.eat_word("-=") {
-            return Some(Token::new(TokenType::MinusEq, range));
-        }
-        if let Some(range) = self.eat_word("-") {
-            return Some(Token::new(TokenType::Minus, range));
-        }
-        if let Some(range) = self.eat_word("*=") {
-            return Some(Token::new(TokenType::StarEq, range));
-        }
-        if let Some(range) = self.eat_word("*") {
-            return Some(Token::new(TokenType::Star, range));
-        }
-        if let Some(range) = self.eat_word("/=") {
-            return Some(Token::new(TokenType::SlashEq, range));
-        }
-        if let Some(range) = self.eat_word("/") {
-            return Some(Token::new(TokenType::Slash, range));
-        }
+        try_eat_word!(
+            self,
+            ("^", TokenType::Caret),
+            ("~", TokenType::Tilde),
+            ("&&", TokenType::AmpAmp),
+            ("&", TokenType::Amp),
+            ("||", TokenType::PipePipe),
+            ("|", TokenType::Pipe),
+            ("==", TokenType::EqEq),
+            ("=", TokenType::Eq),
+            ("!=", TokenType::BangEq),
+            ("!", TokenType::Bang),
+            (">>", TokenType::GtGt),
+            (">=", TokenType::Ge),
+            (">", TokenType::Gt),
+            ("<<", TokenType::LtLt),
+            ("<=", TokenType::Le),
+            ("<", TokenType::Lt),
+            ("+=", TokenType::PlusEq),
+            ("++", TokenType::PlusPlus),
+            ("+", TokenType::Plus),
+            ("->", TokenType::Arrow),
+            ("-=", TokenType::MinusEq),
+            ("--", TokenType::MinusMinus),
+            ("-", TokenType::Minus),
+            ("*=", TokenType::StarEq),
+            ("*", TokenType::Star),
+            ("/=", TokenType::SlashEq),
+            ("/", TokenType::Slash),
+            (":=", TokenType::ColonEq),
+            ("%=", TokenType::PercentEq),
+            ("%", TokenType::Percent),
+        );
         None
     }
 
@@ -178,31 +204,25 @@ impl Lexer {
     }
 
     fn parse_punctuators(&mut self) -> Option<Token> {
-        if let Some(range) = self.eat_word("(") {
-            return Some(Token::new(TokenType::LParen, range));
-        }
-        if let Some(range) = self.eat_word(")") {
-            return Some(Token::new(TokenType::RParen, range));
-        }
-        if let Some(range) = self.eat_word("{") {
-            return Some(Token::new(TokenType::LBrace, range));
-        }
-        if let Some(range) = self.eat_word("}") {
-            return Some(Token::new(TokenType::RBrace, range));
-        }
-        if let Some(range) = self.eat_word(";") {
-            return Some(Token::new(TokenType::Semicolon, range));
-        }
-        if let Some(range) = self.eat_word(",") {
-            return Some(Token::new(TokenType::Comma, range));
-        }
-        if let Some(range) = self.eat_word("//") {
-            return Some(Token::new(TokenType::Comment, range));
-        }
+        try_eat_word!(
+            self,
+            ("(", TokenType::LParen),
+            (")", TokenType::RParen),
+            ("{", TokenType::LBrace),
+            ("}", TokenType::RBrace),
+            ("[", TokenType::LBracket),
+            ("]", TokenType::RBracket),
+            (":", TokenType::Colon),
+            (";", TokenType::Semicolon),
+            (",", TokenType::Comma),
+            ("..", TokenType::DotDot),
+            (".", TokenType::Dot),
+            ("?", TokenType::Question),
+        );
         None
     }
 
-    fn eat_alphanumeric(&mut self) -> Token {
+    fn parse_identifier(&mut self) -> Token {
         let start_pos = self.cur_pos;
         let bytes = self.lines.as_bytes();
         while self.cur_pos < bytes.len() && bytes[self.cur_pos].is_ascii_alphanumeric() {
@@ -219,10 +239,11 @@ impl Lexer {
     }
 
     fn peek_symbol(&self) -> Option<u8> {
-        if self.cur_pos >= self.bytes().len() {
+        let bytes = self.lines.as_bytes();
+        if self.cur_pos >= bytes.len() {
             return None;
         }
-        Some(self.bytes()[self.cur_pos])
+        Some(bytes[self.cur_pos])
     }
 
     fn eat_word(&mut self, word: &str) -> Option<Range> {
@@ -251,9 +272,5 @@ impl Lexer {
             return Some(range);
         }
         None
-    }
-
-    fn bytes(&self) -> &[u8] {
-        self.lines.as_bytes()
     }
 }
