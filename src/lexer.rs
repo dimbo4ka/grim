@@ -33,38 +33,33 @@ impl Lexer {
         }
     }
 
-    pub fn next_token(&mut self) -> Token {
+    pub fn next_token(&mut self) -> Option<Token> {
         self.skip_comments_and_whitespaces();
-        if let Some(eof) = self.parse_eof() {
-            return eof;
-        }
-        if let Some(token) = self.parse_token_started_with_alphabetic() {
-            return token;
-        }
-        if let Some(token) = self.parse_operation() {
-            return token;
-        }
-        if let Some(token) = self.parse_number_literal() {
-            return token;
-        }
-        if let Some(token) = self.parse_punctuators() {
-            return token;
-        }
-        panic!("Unknown token");
+        self.parse_eof()
+            .or_else(|| self.parse_token_started_with_alphabetic())
+            .or_else(|| self.parse_operation())
+            .or_else(|| self.parse_i128_literal())
+            .or_else(|| self.parse_punctuators())
     }
 
-    pub fn get_peek(&mut self) -> Token {
+    pub fn get_peek(&mut self) -> Option<Token> {
         let pos = self.cur_pos;
         let token = self.next_token();
         self.cur_pos = pos;
-        return token;
+        token
     }
 
     fn skip_whitespaces(&mut self) {
-        let bytes = self.lines.as_bytes();
-        while self.cur_pos < bytes.len() {
-            if !bytes[self.cur_pos].is_ascii_whitespace() {
-                break;
+        while !self.is_at_end() && self.current_is_whitespace() {
+            self.cur_pos += 1;
+        }
+    }
+
+    fn skip_until_word(&mut self, word: &str) {
+        while !self.is_at_end() {
+            if self.eat_word(word).is_some() {
+                self.skip_comments_and_whitespaces();
+                return;
             }
             self.cur_pos += 1;
         }
@@ -73,27 +68,15 @@ impl Lexer {
     fn skip_comments_and_whitespaces(&mut self) {
         self.skip_whitespaces();
         if self.eat_word("//").is_some() {
-            while self.cur_pos < self.lines.as_bytes().len() {
-                if self.eat_word("\n").is_some() {
-                    self.skip_comments_and_whitespaces();
-                    return;
-                }
-                self.cur_pos += 1;
-            }
+            self.skip_until_word("\n");
         }
         if self.eat_word("/*").is_some() {
-            while self.cur_pos < self.lines.as_bytes().len() {
-                if self.eat_word("*/").is_some() {
-                    self.skip_comments_and_whitespaces();
-                    return;
-                }
-                self.cur_pos += 1;
-            }
+            self.skip_until_word("*/");
         }
     }
 
     fn parse_eof(&self) -> Option<Token> {
-        if self.cur_pos < self.lines.as_bytes().len() {
+        if !self.is_at_end() {
             return None;
         }
         Some(Token::new(
@@ -102,18 +85,8 @@ impl Lexer {
         ))
     }
 
-    fn start_with_digit(&mut self) -> bool {
-        let bytes = self.lines.as_bytes();
-        (self.cur_pos < bytes.len()) && bytes[self.cur_pos].is_ascii_digit()
-    }
-
-    fn start_with_alphabetic(&mut self) -> bool {
-        let bytes = self.lines.as_bytes();
-        (self.cur_pos < bytes.len()) && bytes[self.cur_pos].is_ascii_alphabetic()
-    }
-
     fn parse_token_started_with_alphabetic(&mut self) -> Option<Token> {
-        if !self.start_with_alphabetic() {
+        if !self.current_is_alphabetic() {
             return None;
         }
         try_eat_full!(
@@ -137,7 +110,7 @@ impl Lexer {
             ("str", TokenType::KwString),
             ("in", TokenType::KwIn),
         );
-        Some(self.parse_identifier())
+        self.parse_identifier()
     }
 
     fn parse_operation(&mut self) -> Option<Token> {
@@ -177,30 +150,26 @@ impl Lexer {
         None
     }
 
-    fn parse_number_literal(&mut self) -> Option<Token> {
-        if !self.start_with_digit() {
+    fn parse_i128_literal(&mut self) -> Option<Token> {
+        if !self.current_is_digit() {
             return None;
         }
-        let bytes = self.lines.as_bytes();
         let start_pos = self.cur_pos;
-        let cur_pos = &mut self.cur_pos;
 
-        while *cur_pos < bytes.len() && bytes[*cur_pos].is_ascii_alphanumeric() {
-            if bytes[*cur_pos].is_ascii_alphabetic() {
-                *cur_pos = start_pos;
+        while !self.is_at_end() && self.current_is_alphanumeric() {
+            if self.current_is_alphabetic() {
+                self.cur_pos = start_pos;
                 return None;
             }
-            *cur_pos += 1;
+            self.cur_pos += 1;
         }
 
-        let token = std::str::from_utf8(&bytes[start_pos..*cur_pos]).unwrap();
-        if let Ok(literal) = token.parse::<i128>() {
-            return Some(Token::new(
-                TokenType::IntLiteral(literal),
-                Range::new(start_pos, *cur_pos),
-            ));
-        }
-        None
+        let token = std::str::from_utf8(self.get_slice(start_pos)).ok()?;
+        let literal = token.parse::<i128>().ok()?;
+        Some(Token::new(
+            TokenType::IntLiteral(literal),
+            Range::new(start_pos, self.cur_pos),
+        ))
     }
 
     fn parse_punctuators(&mut self) -> Option<Token> {
@@ -222,55 +191,81 @@ impl Lexer {
         None
     }
 
-    fn parse_identifier(&mut self) -> Token {
+    fn parse_identifier(&mut self) -> Option<Token> {
         let start_pos = self.cur_pos;
-        let bytes = self.lines.as_bytes();
-        while self.cur_pos < bytes.len() && bytes[self.cur_pos].is_ascii_alphanumeric() {
+        while !self.is_at_end() && self.current_is_alphanumeric() {
             self.cur_pos += 1;
         }
-        Token::new(
-            TokenType::Identifier(
-                std::str::from_utf8(&bytes[start_pos..self.cur_pos])
-                    .unwrap()
-                    .to_string(),
-            ),
-            Range::new(start_pos, self.cur_pos),
-        )
-    }
 
-    fn peek_symbol(&self) -> Option<u8> {
-        let bytes = self.lines.as_bytes();
-        if self.cur_pos >= bytes.len() {
-            return None;
-        }
-        Some(bytes[self.cur_pos])
+        let identifier = std::str::from_utf8(self.get_slice(start_pos)).ok()?;
+        Some(Token::new(
+            TokenType::Identifier(identifier.to_string()),
+            Range::new(start_pos, self.cur_pos),
+        ))
     }
 
     fn eat_word(&mut self, word: &str) -> Option<Range> {
-        let bytes = self.lines.as_bytes();
-        if bytes.len() - self.cur_pos < word.len() {
+        let start_pos = self.cur_pos;
+        let end_pos = start_pos.checked_add(word.len())?;
+
+        if self.bytes().get(start_pos..end_pos)? != word.as_bytes() {
             return None;
         }
-        let start_pos = self.cur_pos;
-        for i in 0..word.len() as usize {
-            if bytes[self.cur_pos] != word.as_bytes()[i] {
-                self.cur_pos = start_pos;
-                return None;
-            }
-            self.cur_pos += 1;
-        }
+        self.cur_pos = end_pos;
         Some(Range::new(start_pos, self.cur_pos))
     }
 
     fn eat_full(&mut self, word: &str) -> Option<Range> {
         if let Some(range) = self.eat_word(word) {
-            if let Some(symbol) = self.peek_symbol() {
-                if symbol.is_ascii_alphanumeric() {
-                    return None;
-                }
+            if self.current_is_alphanumeric() {
+                return None;
             }
             return Some(range);
         }
         None
+    }
+
+    #[inline]
+    fn is_at_end(&self) -> bool {
+        self.cur_pos >= self.lines.as_bytes().len()
+    }
+
+    #[inline]
+    fn get_slice(&self, start_pos: usize) -> &[u8] {
+        &self.bytes()[start_pos..self.cur_pos]
+    }
+
+    #[inline]
+    fn bytes(&self) -> &[u8] {
+        self.lines.as_bytes()
+    }
+
+    #[inline]
+    fn current_byte(&self) -> Option<u8> {
+        self.bytes().get(self.cur_pos).copied()
+    }
+
+    #[inline]
+    fn current_is_whitespace(&self) -> bool {
+        let byte = self.current_byte();
+        byte.map_or(false, |b| b.is_ascii_whitespace())
+    }
+
+    #[inline]
+    fn current_is_digit(&self) -> bool {
+        let byte = self.current_byte();
+        byte.map_or(false, |b| b.is_ascii_digit())
+    }
+
+    #[inline]
+    fn current_is_alphabetic(&self) -> bool {
+        let byte = self.current_byte();
+        byte.map_or(false, |b| b.is_ascii_alphabetic())
+    }
+
+    #[inline]
+    fn current_is_alphanumeric(&self) -> bool {
+        let byte = self.current_byte();
+        byte.map_or(false, |b| b.is_ascii_alphanumeric())
     }
 }

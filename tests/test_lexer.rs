@@ -6,10 +6,13 @@ fn parse_token_types(lines: String) -> Vec<TokenType> {
     let mut tokens = Vec::<TokenType>::new();
     loop {
         let token = lexer.next_token();
-        if let TokenType::Eof = token.token_type {
+        if token.is_none() {
             break;
         }
-        tokens.push(token.token_type);
+        if let TokenType::Eof = token.clone().unwrap().token_type {
+            break;
+        }
+        tokens.push(token.unwrap().token_type);
     }
     tokens
 }
@@ -17,8 +20,8 @@ fn parse_token_types(lines: String) -> Vec<TokenType> {
 #[test]
 fn test_if_statement() {
     let code = "
-        var x := 10;
-        if x > 5 {
+        var x := 10; // initalize
+        if x > 5 {   // condition
             true;
         } else {
             false;
