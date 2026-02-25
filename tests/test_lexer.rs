@@ -20,7 +20,7 @@ fn parse_token_types(lines: String) -> Vec<TokenType> {
 #[test]
 fn test_if_statement() {
     let code = "
-        var x := 10; // initalize
+        var x: int = 10; // initalize
         if x > 5 {   // condition
             true;
         } else {
@@ -31,7 +31,9 @@ fn test_if_statement() {
     let expected = vec![
         TokenType::KwVar,
         TokenType::Identifier("x".to_string()),
-        TokenType::ColonEq,
+        TokenType::Colon,
+        TokenType::KwInt,
+        TokenType::Eq,
         TokenType::IntLiteral(10),
         TokenType::Semicolon,
         TokenType::KwIf,
@@ -54,7 +56,7 @@ fn test_if_statement() {
 #[test]
 fn test_fn_statement() {
     let code = "
-        fn func(x: int) {
+        fn func(x: int) -> int {
             return x;
         }
     "
@@ -67,6 +69,8 @@ fn test_fn_statement() {
         TokenType::Colon,
         TokenType::KwInt,
         TokenType::RParen,
+        TokenType::Arrow,
+        TokenType::KwInt,
         TokenType::LBrace,
         TokenType::KwReturn,
         TokenType::Identifier("x".to_string()),
@@ -95,14 +99,13 @@ fn test_function_call() {
 #[test]
 fn test_foreach() {
     let code = "
-        var sum := 0;
+        sum := 0;
         foreach i in 0..10 {
             sum += i;
         }
     "
     .to_string();
     let expected = vec![
-        TokenType::KwVar,
         TokenType::Identifier("sum".to_string()),
         TokenType::ColonEq,
         TokenType::IntLiteral(0),
@@ -126,14 +129,13 @@ fn test_foreach() {
 #[test]
 fn test_for() {
     let code = "
-        var sum := 0;
-        for i := 0; i < 10; ++i {
+        sum := 0;
+        for i := 0; i < 10; i++ {
             sum += i;
         }
     "
     .to_string();
     let expected = vec![
-        TokenType::KwVar,
         TokenType::Identifier("sum".to_string()),
         TokenType::ColonEq,
         TokenType::IntLiteral(0),
@@ -147,8 +149,8 @@ fn test_for() {
         TokenType::Lt,
         TokenType::IntLiteral(10),
         TokenType::Semicolon,
-        TokenType::PlusPlus,
         TokenType::Identifier("i".to_string()),
+        TokenType::PlusPlus,
         TokenType::LBrace,
         TokenType::Identifier("sum".to_string()),
         TokenType::PlusEq,
@@ -162,23 +164,24 @@ fn test_for() {
 #[test]
 fn test_while() {
     let code = "
-        var sum := 0;
-        var i := 0;
+        sum := 0;
+        var i: int = 0;
         while i < 10 {
             sum += i;
-            ++i;
+            i++;
         }
     "
     .to_string();
     let expected = vec![
-        TokenType::KwVar,
         TokenType::Identifier("sum".to_string()),
         TokenType::ColonEq,
         TokenType::IntLiteral(0),
         TokenType::Semicolon,
         TokenType::KwVar,
         TokenType::Identifier("i".to_string()),
-        TokenType::ColonEq,
+        TokenType::Colon,
+        TokenType::KwInt,
+        TokenType::Eq,
         TokenType::IntLiteral(0),
         TokenType::Semicolon,
         TokenType::KwWhile,
@@ -190,8 +193,8 @@ fn test_while() {
         TokenType::PlusEq,
         TokenType::Identifier("i".to_string()),
         TokenType::Semicolon,
-        TokenType::PlusPlus,
         TokenType::Identifier("i".to_string()),
+        TokenType::PlusPlus,
         TokenType::Semicolon,
         TokenType::RBrace,
     ];
@@ -201,26 +204,27 @@ fn test_while() {
 #[test]
 fn test_loop() {
     let code = "
-        var sum := 0;
-        var i := 0;
+        sum := 0;
+        var i: int = 0;
         loop {
             if i >= 10 {
                 break;
             }
             sum += i;
-            ++i;
+            i++;
         }
     "
     .to_string();
     let expected = vec![
-        TokenType::KwVar,
         TokenType::Identifier("sum".to_string()),
         TokenType::ColonEq,
         TokenType::IntLiteral(0),
         TokenType::Semicolon,
         TokenType::KwVar,
         TokenType::Identifier("i".to_string()),
-        TokenType::ColonEq,
+        TokenType::Colon,
+        TokenType::KwInt,
+        TokenType::Eq,
         TokenType::IntLiteral(0),
         TokenType::Semicolon,
         TokenType::KwLoop,
@@ -237,8 +241,8 @@ fn test_loop() {
         TokenType::PlusEq,
         TokenType::Identifier("i".to_string()),
         TokenType::Semicolon,
-        TokenType::PlusPlus,
         TokenType::Identifier("i".to_string()),
+        TokenType::PlusPlus,
         TokenType::Semicolon,
         TokenType::RBrace,
     ];
