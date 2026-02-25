@@ -248,3 +248,80 @@ fn test_loop() {
     ];
     assert_eq!(parse_token_types(code), expected);
 }
+
+#[test]
+fn test_struct_definition() {
+    let code = "pub type W = struct(x: int, y: str, z: bool);".to_string();
+
+    let expected = vec![
+        TokenType::KwPub,
+        TokenType::KwType,
+        TokenType::Identifier("W".to_string()),
+        TokenType::Eq,
+        TokenType::KwStruct,
+        TokenType::LParen,
+        TokenType::Identifier("x".to_string()),
+        TokenType::Colon,
+        TokenType::KwInt,
+        TokenType::Comma,
+        TokenType::Identifier("y".to_string()),
+        TokenType::Colon,
+        TokenType::KwString,
+        TokenType::Comma,
+        TokenType::Identifier("z".to_string()),
+        TokenType::Colon,
+        TokenType::KwBool,
+        TokenType::RParen,
+        TokenType::Semicolon,
+    ];
+    assert_eq!(parse_token_types(code), expected);
+}
+
+#[test]
+fn test_module() {
+    let code = "module test;".to_string();
+
+    let expected = vec![
+        TokenType::KwModule,
+        TokenType::Identifier("test".to_string()),
+        TokenType::Semicolon
+    ];
+    assert_eq!(parse_token_types(code), expected);
+}
+
+#[test]
+fn test_method() {
+    let code = "
+    pub fn (self: MyStruct) method_name(x: int, y: int) {
+	    // ...
+    }"
+    .to_string();
+
+    let expected = vec![
+        TokenType::KwPub,
+        TokenType::KwFn,
+
+        TokenType::LParen,
+        TokenType::KwSelf,
+        
+        TokenType::Colon,
+        TokenType::Identifier("MyStruct".to_string()),
+
+        TokenType::RParen,
+
+        TokenType::Identifier("method_name".to_string()),
+        TokenType::LParen,
+        TokenType::Identifier("x".to_string()),
+        TokenType::Colon,
+        TokenType::KwInt,
+        TokenType::Comma,
+        TokenType::Identifier("y".to_string()),
+        TokenType::Colon,
+        TokenType::KwInt,
+        TokenType::RParen,
+
+        TokenType::LBrace,
+        TokenType::RBrace,
+    ];
+    assert_eq!(parse_token_types(code), expected);
+}
