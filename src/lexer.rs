@@ -91,6 +91,11 @@ impl Lexer {
         }
         try_eat_full!(
             self,
+            ("module", TokenType::KwModule),
+            ("self", TokenType::KwSelf),
+            ("type", TokenType::KwType),
+            ("struct", TokenType::KwStruct),
+            ("pub", TokenType::KwPub),
             ("var", TokenType::KwVar),
             ("const", TokenType::KwConst),
             ("true", TokenType::BoolLiteral(true)),
@@ -193,7 +198,8 @@ impl Lexer {
 
     fn parse_identifier(&mut self) -> Option<Token> {
         let start_pos = self.cur_pos;
-        while !self.is_at_end() && self.current_is_alphanumeric() {
+        while !self.is_at_end() && (self.current_is_alphanumeric() || self.current_is_underscore())
+        {
             self.cur_pos += 1;
         }
 
@@ -267,5 +273,11 @@ impl Lexer {
     fn current_is_alphanumeric(&self) -> bool {
         let byte = self.current_byte();
         byte.map_or(false, |b| b.is_ascii_alphanumeric())
+    }
+
+    #[inline]
+    fn current_is_underscore(&self) -> bool {
+        let byte = self.current_byte();
+        byte.map_or(false, |b| b == '_' as u8)
     }
 }

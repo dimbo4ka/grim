@@ -79,6 +79,11 @@ pub enum TokenType {
     Le,
     Ge,
 
+    KwModule,
+    KwSelf,
+    KwStruct,
+    KwPub,
+    KwType,
     KwVar,
     KwConst,
     KwIf,
