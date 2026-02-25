@@ -284,7 +284,7 @@ fn test_module() {
     let expected = vec![
         TokenType::KwModule,
         TokenType::Identifier("test".to_string()),
-        TokenType::Semicolon
+        TokenType::Semicolon,
     ];
     assert_eq!(parse_token_types(code), expected);
 }
@@ -300,15 +300,11 @@ fn test_method() {
     let expected = vec![
         TokenType::KwPub,
         TokenType::KwFn,
-
         TokenType::LParen,
         TokenType::KwSelf,
-        
         TokenType::Colon,
         TokenType::Identifier("MyStruct".to_string()),
-
         TokenType::RParen,
-
         TokenType::Identifier("method_name".to_string()),
         TokenType::LParen,
         TokenType::Identifier("x".to_string()),
@@ -319,7 +315,6 @@ fn test_method() {
         TokenType::Colon,
         TokenType::KwInt,
         TokenType::RParen,
-
         TokenType::LBrace,
         TokenType::RBrace,
     ];

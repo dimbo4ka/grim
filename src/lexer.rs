@@ -198,7 +198,8 @@ impl Lexer {
 
     fn parse_identifier(&mut self) -> Option<Token> {
         let start_pos = self.cur_pos;
-        while !self.is_at_end() && (self.current_is_alphanumeric() || self.current_is_underscore()) {
+        while !self.is_at_end() && (self.current_is_alphanumeric() || self.current_is_underscore())
+        {
             self.cur_pos += 1;
         }
 
